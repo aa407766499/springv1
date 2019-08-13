@@ -10,7 +10,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -58,22 +57,18 @@ public class MyDispatchServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) {
         InputStream is = null;
-        is = this.getClass().getClassLoader().getResourceAsStream(config.getInitParameter("contextConfigLocation"));
+        is = this.getClass().getClassLoader().getResourceAsStream(config.getInitParameter("contextConfigLocation").replaceAll("classpath:", ""));
         Properties contextConfig = new Properties();
         try {
             contextConfig.load(is);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        String scanPackage = contextConfig.getProperty("scanPackage");
-        doScan(scanPackage);
-        for (String className : mappings.keySet()) {
-            try {
+            String scanPackage = contextConfig.getProperty("scanPackage");
+            doScan(scanPackage);
+            for (String className : mappings.keySet()) {
                 Class<?> clazz = Class.forName(className);
                 if (clazz.isAnnotationPresent(MyService.class)) {
                     MyService myService = clazz.getAnnotation(MyService.class);
                     String beanName = myService.value();
-                    if (beanName == "") {
+                    if (beanName.equals("")) {
                         beanName = clazz.getName();
                         mappings.put(beanName, clazz.newInstance());
                     }
@@ -85,7 +80,7 @@ public class MyDispatchServlet extends HttpServlet {
                 if (clazz.isAnnotationPresent(MyController.class)) {
                     MyController myController = clazz.getAnnotation(MyController.class);
                     String beanName = myController.value();
-                    if (beanName == "") {
+                    if (beanName.equals("")) {
                         beanName = clazz.getName();
                         mappings.put(beanName, clazz.newInstance());
                     }
@@ -96,17 +91,17 @@ public class MyDispatchServlet extends HttpServlet {
                         }
                         MyAutowired myAutowired = field.getAnnotation(MyAutowired.class);
                         String name = myAutowired.value();
-                        if (name == "") {
+                        if (name.equals("")) {
                             Object instance = mappings.get(field.getType().getName());
                         }
                         Object instance = mappings.get(name);
                         field.setAccessible(true);
-                        field.set(mappings.get(beanName),instance);
+                        field.set(mappings.get(beanName), instance);
                     }
                     String baseUrl = "";
                     if (clazz.isAnnotationPresent(MyRequestMapping.class)) {
                         MyRequestMapping classMapping = clazz.getAnnotation(MyRequestMapping.class);
-                        baseUrl = ("/"+classMapping.value()).replaceAll("/+","/");
+                        baseUrl = ("/" + classMapping.value()).replaceAll("/+", "/");
                     }
                     for (Method method : clazz.getDeclaredMethods()) {
                         if (method.isAnnotationPresent(MyRequestMapping.class)) {
@@ -116,13 +111,9 @@ public class MyDispatchServlet extends HttpServlet {
                         mappings.put(baseUrl, method);
                     }
                 }
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
