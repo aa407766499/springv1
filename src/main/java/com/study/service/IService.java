@@ -8,6 +8,6 @@ package com.study.service;
  */
 public interface IService {
 
-    String getName();
+    void printName(String name);
 
 }

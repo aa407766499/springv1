@@ -24,13 +24,8 @@ public class IController {
     private IService iService;
 
     @MyRequestMapping("invokeService")
-    public void invokeService(HttpServletRequest request, HttpServletResponse response) {
-        String name = iService.getName();
-        try {
-            response.getWriter().write(name);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void invokeService(HttpServletRequest request, HttpServletResponse response,@MyRequestParam("name") String name) {
+        iService.printName(name);
     }
     @MyRequestMapping("add")
     public void add(HttpServletRequest request, HttpServletResponse response, @MyRequestParam("a") Integer a, @MyRequestParam("b") Integer b) {

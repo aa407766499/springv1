@@ -11,7 +11,9 @@ import com.study.service.IService;
  */
 @MyService
 public class ServiceImpl implements IService {
-    public String getName() {
-        return "hello";
+
+    public void printName(String name) {
+        System.out.println(name);
     }
+
 }
