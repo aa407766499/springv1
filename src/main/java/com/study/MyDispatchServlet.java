@@ -71,8 +71,9 @@ public class MyDispatchServlet extends HttpServlet {
                     if (beanName.equals("")) {
                         beanName = clazz.getName();
                         mappings.put(beanName, clazz.newInstance());
+                    } else {
+                        mappings.put(beanName, clazz.newInstance());
                     }
-                    mappings.put(beanName, clazz.newInstance());
                     for (Class<?> aClass : clazz.getInterfaces()) {
                         mappings.put(aClass.getName(), clazz.newInstance());
                     }
@@ -83,30 +84,34 @@ public class MyDispatchServlet extends HttpServlet {
                     if (beanName.equals("")) {
                         beanName = clazz.getName();
                         mappings.put(beanName, clazz.newInstance());
+                    } else {
+                        mappings.put(beanName, clazz.newInstance());
                     }
-                    mappings.put(beanName, clazz.newInstance());
                     for (Field field : clazz.getDeclaredFields()) {
                         if (!field.isAnnotationPresent(MyAutowired.class)) {
                             continue;
                         }
                         MyAutowired myAutowired = field.getAnnotation(MyAutowired.class);
                         String name = myAutowired.value();
+                        Object instance = null;
                         if (name.equals("")) {
-                            Object instance = mappings.get(field.getType().getName());
+                            instance = mappings.get(field.getType().getName());
+                        } else {
+                            instance = mappings.get(name);
                         }
-                        Object instance = mappings.get(name);
                         field.setAccessible(true);
                         field.set(mappings.get(beanName), instance);
                     }
                     String baseUrl = "";
+                    String classUrl = "";
                     if (clazz.isAnnotationPresent(MyRequestMapping.class)) {
                         MyRequestMapping classMapping = clazz.getAnnotation(MyRequestMapping.class);
-                        baseUrl = ("/" + classMapping.value()).replaceAll("/+", "/");
+                        classUrl = ("/" + classMapping.value()).replaceAll("/+", "/");
                     }
                     for (Method method : clazz.getDeclaredMethods()) {
                         if (method.isAnnotationPresent(MyRequestMapping.class)) {
                             MyRequestMapping methodMapping = method.getAnnotation(MyRequestMapping.class);
-                            baseUrl = (baseUrl + "/" + methodMapping.value()).replaceAll("/+", "/");
+                            baseUrl = (classUrl + "/" + methodMapping.value()).replaceAll("/+", "/");
                         }
                         mappings.put(baseUrl, method);
                     }

@@ -1,7 +1,7 @@
-package com.study.service.impl;
+package com.study.springv1.service.impl;
 
 import com.study.annotation.MyService;
-import com.study.service.IService;
+import com.study.springv1.service.IService;
 
 /**
  * @author Huzi114
@@ -12,8 +12,8 @@ import com.study.service.IService;
 @MyService
 public class ServiceImpl implements IService {
 
-    public void printName(String name) {
-        System.out.println(name);
+    public String printName(String name) {
+        return name;
     }
 
 }

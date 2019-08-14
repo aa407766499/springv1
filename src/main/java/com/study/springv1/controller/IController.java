@@ -1,10 +1,10 @@
-package com.study.controller;
+package com.study.springv1.controller;
 
 import com.study.annotation.MyAutowired;
 import com.study.annotation.MyController;
 import com.study.annotation.MyRequestMapping;
 import com.study.annotation.MyRequestParam;
-import com.study.service.IService;
+import com.study.springv1.service.IService;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -25,7 +25,12 @@ public class IController {
 
     @MyRequestMapping("invokeService")
     public void invokeService(HttpServletRequest request, HttpServletResponse response,@MyRequestParam("name") String name) {
-        iService.printName(name);
+        String s = iService.printName(name);
+        try {
+            response.getWriter().write(s);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     @MyRequestMapping("add")
     public void add(HttpServletRequest request, HttpServletResponse response, @MyRequestParam("a") Integer a, @MyRequestParam("b") Integer b) {

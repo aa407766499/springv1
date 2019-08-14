@@ -1,4 +1,4 @@
-package com.study.service;
+package com.study.springv1.service;
 
 /**
  * @author Huzi114
@@ -8,6 +8,6 @@ package com.study.service;
  */
 public interface IService {
 
-    void printName(String name);
+    String printName(String name);
 
 }
