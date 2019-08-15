@@ -1,23 +1,13 @@
 package com.study;
 
-import com.study.annotation.MyAutowired;
-import com.study.annotation.MyController;
-import com.study.annotation.MyRequestMapping;
-import com.study.annotation.MyService;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * @author Huzi114
@@ -27,7 +17,14 @@ import java.util.Properties;
  */
 public class MyDispatchServlet extends HttpServlet {
 
-    private Map<String, Object> mappings = new HashMap<String, Object>();
+    //配置信息
+    private Properties contextConfig = new Properties();
+
+    //ioc容器
+    private Map<String, Object> ioc = new HashMap<String, Object>();
+
+    //类名列表
+    private List<String> classNames = new ArrayList<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
@@ -40,86 +37,11 @@ public class MyDispatchServlet extends HttpServlet {
     }
 
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) {
-        String uri = req.getRequestURI();
-        String contextPath = req.getContextPath();
-        Map<String, String[]> parameterMap = req.getParameterMap();
-        String url = uri.replaceAll(contextPath, "").replaceAll("/+", "/");
-        Method method = (Method) mappings.get(url);
-        try {
-            method.invoke(mappings.get(method.getDeclaringClass().getName()), req, resp, parameterMap.get("name")[0]);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
     public void init(ServletConfig config) {
-        InputStream is = null;
-        is = this.getClass().getClassLoader().getResourceAsStream(config.getInitParameter("contextConfigLocation").replaceAll("classpath:", ""));
-        Properties contextConfig = new Properties();
-        try {
-            contextConfig.load(is);
-            String scanPackage = contextConfig.getProperty("scanPackage");
-            doScan(scanPackage);
-            for (String className : mappings.keySet()) {
-                Class<?> clazz = Class.forName(className);
-                if (clazz.isAnnotationPresent(MyService.class)) {
-                    MyService myService = clazz.getAnnotation(MyService.class);
-                    String beanName = myService.value();
-                    if (beanName.equals("")) {
-                        beanName = clazz.getName();
-                        mappings.put(beanName, clazz.newInstance());
-                    } else {
-                        mappings.put(beanName, clazz.newInstance());
-                    }
-                    for (Class<?> aClass : clazz.getInterfaces()) {
-                        mappings.put(aClass.getName(), clazz.newInstance());
-                    }
-                }
-                if (clazz.isAnnotationPresent(MyController.class)) {
-                    MyController myController = clazz.getAnnotation(MyController.class);
-                    String beanName = myController.value();
-                    if (beanName.equals("")) {
-                        beanName = clazz.getName();
-                        mappings.put(beanName, clazz.newInstance());
-                    } else {
-                        mappings.put(beanName, clazz.newInstance());
-                    }
-                    for (Field field : clazz.getDeclaredFields()) {
-                        if (!field.isAnnotationPresent(MyAutowired.class)) {
-                            continue;
-                        }
-                        MyAutowired myAutowired = field.getAnnotation(MyAutowired.class);
-                        String name = myAutowired.value();
-                        Object instance = null;
-                        if (name.equals("")) {
-                            instance = mappings.get(field.getType().getName());
-                        } else {
-                            instance = mappings.get(name);
-                        }
-                        field.setAccessible(true);
-                        field.set(mappings.get(beanName), instance);
-                    }
-                    String baseUrl = "";
-                    String classUrl = "";
-                    if (clazz.isAnnotationPresent(MyRequestMapping.class)) {
-                        MyRequestMapping classMapping = clazz.getAnnotation(MyRequestMapping.class);
-                        classUrl = ("/" + classMapping.value()).replaceAll("/+", "/");
-                    }
-                    for (Method method : clazz.getDeclaredMethods()) {
-                        if (method.isAnnotationPresent(MyRequestMapping.class)) {
-                            MyRequestMapping methodMapping = method.getAnnotation(MyRequestMapping.class);
-                            baseUrl = (classUrl + "/" + methodMapping.value()).replaceAll("/+", "/");
-                        }
-                        mappings.put(baseUrl, method);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
     }
 
     private void doScan(String scanPackage) {
@@ -133,7 +55,6 @@ public class MyDispatchServlet extends HttpServlet {
                 continue;
             }
             String className = scanPackage + "." + file.getName().replaceAll(".class", "");
-            mappings.put(className, null);
         }
     }
 
