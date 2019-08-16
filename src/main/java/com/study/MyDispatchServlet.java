@@ -2,10 +2,7 @@ package com.study;
 
 
 import cn.hutool.core.collection.CollectionUtil;
-import com.study.annotation.MyAutowired;
-import com.study.annotation.MyController;
-import com.study.annotation.MyRequestMapping;
-import com.study.annotation.MyService;
+import com.study.annotation.*;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.ServletConfig;
@@ -18,6 +15,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.*;
 
@@ -57,8 +55,27 @@ public class MyDispatchServlet extends HttpServlet {
         String url = uri.replaceAll(contextPath, "").replaceAll("/+", "/");
         Map<String, String[]> parameterMap = req.getParameterMap();
         Method method = handlerMapping.get(url);
+        Parameter[] parameters = method.getParameters();
+
+        Object[] paramValues = new Object[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].getType() == HttpServletRequest.class) {
+                paramValues[i] = req;
+                continue;
+            }
+            if (parameters[i].getType() == HttpServletResponse.class) {
+                paramValues[i] = resp;
+                continue;
+            }
+            if (!parameters[i].isAnnotationPresent(MyRequestParam.class)) {
+                continue;
+            }
+            MyRequestParam myRequestParam = parameters[i].getAnnotation(MyRequestParam.class);
+            String key = myRequestParam.value();
+            paramValues[i] = parameterMap.get(key)[0];
+        }
         try {
-            method.invoke(ioc.get(toLowerFirstCase(method.getDeclaringClass().getSimpleName())), req, resp, parameterMap.get("name")[0]);
+            method.invoke(ioc.get(toLowerFirstCase(method.getDeclaringClass().getSimpleName())),paramValues);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         } catch (InvocationTargetException e) {
