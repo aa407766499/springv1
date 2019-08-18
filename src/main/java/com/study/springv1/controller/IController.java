@@ -24,7 +24,7 @@ public class IController {
     private IService iService;
 
     @MyRequestMapping("invokeService")
-    public void invokeService(HttpServletRequest request, HttpServletResponse response,@MyRequestParam("name") String name) {
+    public void invokeService(HttpServletRequest request, HttpServletResponse response, @MyRequestParam("name") String name) {
         String s = iService.printName(name);
         try {
             response.getWriter().write(s);
@@ -32,10 +32,12 @@ public class IController {
             e.printStackTrace();
         }
     }
+
     @MyRequestMapping("add")
     public void add(HttpServletRequest request, HttpServletResponse response, @MyRequestParam("a") Integer a, @MyRequestParam("b") Integer b) {
+        Integer c = a + b;
         try {
-            response.getWriter().write(a+b);
+            response.getWriter().write(""+c.intValue());
         } catch (IOException e) {
             e.printStackTrace();
         }

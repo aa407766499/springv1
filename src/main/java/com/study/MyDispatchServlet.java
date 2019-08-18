@@ -3,6 +3,7 @@ package com.study;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.study.annotation.*;
+import com.study.springv1.convert.ConverterStrategy;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.ServletConfig;
@@ -18,6 +19,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Huzi114
@@ -37,7 +40,7 @@ public class MyDispatchServlet extends HttpServlet {
     private List<String> classNames = new ArrayList<>();
 
     //处理器映射
-    private Map<String, Method> handlerMapping = new HashMap<>();
+    private List<Handler> handlerMapping = new ArrayList<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
@@ -50,14 +53,21 @@ public class MyDispatchServlet extends HttpServlet {
     }
 
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) {
-        String uri = req.getRequestURI();
-        String contextPath = req.getContextPath();
-        String url = uri.replaceAll(contextPath, "").replaceAll("/+", "/");
+        Handler handler = getHandler(req);
+        if (handler == null) {
+        }
         Map<String, String[]> parameterMap = req.getParameterMap();
-        Method method = handlerMapping.get(url);
-        Parameter[] parameters = method.getParameters();
-
+        Map<String, Integer> paramIndexMapping = handler.getParamIndexMapping();
+        Parameter[] parameters = handler.getMethod().getParameters();
         Object[] paramValues = new Object[parameters.length];
+        for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+            String value = Arrays.toString(entry.getValue()).replaceAll("\\[|\\]", "").replaceAll("\\s", ",");
+            if (!paramIndexMapping.containsKey(entry.getKey())) {
+                continue;
+            }
+            Integer index = paramIndexMapping.get(entry.getKey());
+            paramValues[index] = ConverterStrategy.getConverter(parameters[index].getType()).convert(value);
+        }
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].getType() == HttpServletRequest.class) {
                 paramValues[i] = req;
@@ -65,22 +75,22 @@ public class MyDispatchServlet extends HttpServlet {
             }
             if (parameters[i].getType() == HttpServletResponse.class) {
                 paramValues[i] = resp;
-                continue;
             }
-            if (!parameters[i].isAnnotationPresent(MyRequestParam.class)) {
-                continue;
+        }
+        handler.handle(paramValues);
+    }
+
+    private Handler getHandler(HttpServletRequest req) {
+        String uri = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        uri = uri.replaceAll(contextPath, "").replaceAll("/+", "/");
+        for (Handler handler : handlerMapping) {
+            Matcher matcher = handler.getPattern().matcher(uri);
+            if (matcher.matches()) {
+                return handler;
             }
-            MyRequestParam myRequestParam = parameters[i].getAnnotation(MyRequestParam.class);
-            String key = myRequestParam.value();
-            paramValues[i] = parameterMap.get(key)[0];
         }
-        try {
-            method.invoke(ioc.get(toLowerFirstCase(method.getDeclaringClass().getSimpleName())),paramValues);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
+        return null;
     }
 
     @Override
@@ -195,7 +205,7 @@ public class MyDispatchServlet extends HttpServlet {
                 }
                 field.setAccessible(true);
                 try {
-                    field.set(entry.getValue(),ioc.get(value));
+                    field.set(entry.getValue(), ioc.get(value));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -223,9 +233,86 @@ public class MyDispatchServlet extends HttpServlet {
                 }
                 MyRequestMapping myRequestMapping = method.getAnnotation(MyRequestMapping.class);
                 String value = myRequestMapping.value();
-                handlerMapping.put(("/" + url + "/" + value).replaceAll("/+", "/"), method);
+                Pattern pattern = Pattern.compile(("/" + url + "/" + value).replaceAll("/+", "/"));
+                Handler handler = new Handler(entry.getValue(), method, pattern);
+                handlerMapping.add(handler);
             }
         }
     }
 
+    private class Handler {
+
+        private Object controller;
+
+        private Method method;
+
+        private Pattern pattern;
+
+        private Map<String, Integer> paramIndexMapping;
+
+        public Handler(Object controller, Method method, Pattern pattern) {
+            this.controller = controller;
+            this.method = method;
+            this.pattern = pattern;
+            paramIndexMapping = new HashMap<>();
+            putParamIndexMapping();
+        }
+
+        public void putParamIndexMapping() {
+            Parameter[] parameters = method.getParameters();
+            for (int i = 0; i < parameters.length; i++) {
+                if (!parameters[i].isAnnotationPresent(MyRequestParam.class)) {
+                    continue;
+                }
+                MyRequestParam myRequestParam = parameters[i].getAnnotation(MyRequestParam.class);
+                String value = myRequestParam.value();
+                if (!value.equals("")) {
+                    paramIndexMapping.put(value, i);
+                }
+            }
+        }
+
+        public void handle(Object[] paramValues) {
+            try {
+                method.invoke(controller, paramValues);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public Object getController() {
+            return controller;
+        }
+
+        public void setController(Object controller) {
+            this.controller = controller;
+        }
+
+        public Method getMethod() {
+            return method;
+        }
+
+        public void setMethod(Method method) {
+            this.method = method;
+        }
+
+        public Pattern getPattern() {
+            return pattern;
+        }
+
+        public void setPattern(Pattern pattern) {
+            this.pattern = pattern;
+        }
+
+        public Map<String, Integer> getParamIndexMapping() {
+            return paramIndexMapping;
+        }
+
+        public void setParamIndexMapping(Map<String, Integer> paramIndexMapping) {
+            this.paramIndexMapping = paramIndexMapping;
+        }
+
+    }
 }
