@@ -61,7 +61,7 @@ public class MyDispatchServlet extends HttpServlet {
         Parameter[] parameters = handler.getMethod().getParameters();
         Object[] paramValues = new Object[parameters.length];
         for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-            String value = Arrays.toString(entry.getValue()).replaceAll("\\[|\\]", "").replaceAll("\\s", ",");
+            String value = Arrays.toString(entry.getValue()).replaceAll("\\[|\\]", "").replaceAll("\\s", "");
             if (!paramIndexMapping.containsKey(entry.getKey())) {
                 continue;
             }
@@ -315,4 +315,5 @@ public class MyDispatchServlet extends HttpServlet {
         }
 
     }
+
 }
